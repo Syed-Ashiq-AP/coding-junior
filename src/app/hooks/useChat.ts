@@ -275,23 +275,48 @@ export function useChat(): UseChatResult {
                     content: msg.content,
                 }));
 
-                const response = await fetch("/api/chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        message: message.trim(),
-                        conversationHistory,
-                    }),
-                });
-
-                if (!response.ok) {
-                    const errorData: ErrorResponse = await response.json();
+                let response: Response;
+                try {
+                    response = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            message: message.trim(),
+                            conversationHistory,
+                        }),
+                    });
+                } catch (fetchError) {
+                    // Network failure - treat as offline
+                    console.log("Network fetch failed:", fetchError);
                     throw new Error(
                         JSON.stringify({
-                            message:
-                                errorData.error || "Failed to get AI response",
+                            message: "Network connection failed",
+                            errorType: "offline",
+                            retryable: true,
+                            retryAfter: 2,
+                        })
+                    );
+                }
+
+                if (!response.ok) {
+                    let errorData: ErrorResponse;
+                    try {
+                        errorData = await response.json();
+                    } catch {
+                        // Handle non-JSON error responses
+                        const errorText = await response.text();
+                        errorData = {
+                            error: errorText || "Failed to get AI response",
+                            errorType: response.status === 503 ? "offline" : "unknown_error",
+                            retryable: response.status === 503
+                        };
+                    }
+                    
+                    throw new Error(
+                        JSON.stringify({
+                            message: errorData.error || "Failed to get AI response",
                             errorType: errorData.errorType || "unknown_error",
                             retryable: errorData.retryable || false,
                             retryAfter: errorData.retryAfter || 0,
@@ -299,7 +324,16 @@ export function useChat(): UseChatResult {
                     );
                 }
 
-                const data: ChatResponse = await response.json();
+                let data: ChatResponse;
+                try {
+                    data = await response.json();
+                } catch {
+                    // Handle non-JSON success responses
+                    const responseText = await response.text();
+                    data = {
+                        response: responseText || "Received response but couldn't parse it",
+                    };
+                }
 
                 // Cache the response for future use
                 saveCachedResponse(message, data.response);

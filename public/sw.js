@@ -130,8 +130,27 @@ self.addEventListener("fetch", (event) => {
                     if (request.destination === "document") {
                         return caches.match("/");
                     }
+                    // For API requests, return a proper JSON response
+                    if (request.url.includes('/api/')) {
+                        return new Response(
+                            JSON.stringify({
+                                error: "Network unavailable",
+                                errorType: "offline",
+                                message: "This request failed due to network issues. Please check your connection."
+                            }),
+                            {
+                                status: 503,
+                                statusText: "Service Unavailable",
+                                headers: { "Content-Type": "application/json" }
+                            }
+                        );
+                    }
                     // For other requests, return a generic offline response
-                    return new Response("Offline", { status: 503 });
+                    return new Response("Offline", { 
+                        status: 503,
+                        statusText: "Service Unavailable",
+                        headers: { "Content-Type": "text/plain" }
+                    });
                 });
         })
     );
