@@ -12,8 +12,11 @@ export default function VoiceChatInterface() {
         error,
         errorType,
         isRetrying,
+        isOnline,
+        cacheStatus,
         sendMessage,
         clearChat,
+        clearCache,
         retryLastMessage,
     } = useChat();
     const {
@@ -324,8 +327,22 @@ export default function VoiceChatInterface() {
                                             : "text-green-300"
                                     }`}
                                 >
-                                    <div className="text-xs uppercase tracking-wide opacity-70 mb-1">
-                                        {message.role === "user" ? "You" : "AI"}
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="text-xs uppercase tracking-wide opacity-70">
+                                            {message.role === "user" ? "You" : "AI"}
+                                        </div>
+                                        <div className="flex space-x-1">
+                                            {message.cached && (
+                                                <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">
+                                                    📦 Cached
+                                                </span>
+                                            )}
+                                            {message.offline && (
+                                                <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full">
+                                                    🔌 Offline
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="bg-black/20 rounded-lg p-3 border border-gray-800">
                                         {message.content}
@@ -335,14 +352,43 @@ export default function VoiceChatInterface() {
                         </div>
                         {/* Scroll indicator gradient */}
                         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/10 to-transparent pointer-events-none rounded-b-2xl"></div>
-                        <button
-                            onClick={clearChat}
-                            className="mt-4 w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 py-2 rounded-lg transition-colors relative z-10"
-                        >
-                            Clear Chat
-                        </button>
+                        <div className="flex space-x-2 mt-4">
+                            <button
+                                onClick={clearChat}
+                                className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 py-2 rounded-lg transition-colors relative z-10"
+                            >
+                                Clear Chat
+                            </button>
+                            <button
+                                onClick={clearCache}
+                                className="flex-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 py-2 rounded-lg transition-colors relative z-10"
+                            >
+                                Clear Cache
+                            </button>
+                        </div>
                     </div>
                 )}
+
+                {/* Status and Cache Indicator */}
+                <div className="fixed bottom-4 left-4 flex flex-col space-y-2">
+                    {/* Online/Offline Status */}
+                    <div className={`flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border text-sm ${
+                        isOnline 
+                            ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+                            : 'bg-red-500/20 border-red-500/30 text-red-300'
+                    }`}>
+                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+                        <span>{isOnline ? 'Online' : 'Offline'}</span>
+                    </div>
+
+                    {/* Cache Status */}
+                    {cacheStatus.enabled && (
+                        <div className="flex items-center space-x-2 px-3 py-2 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 backdrop-blur-md text-sm">
+                            <span>📦</span>
+                            <span>Cache: {cacheStatus.size}KB</span>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

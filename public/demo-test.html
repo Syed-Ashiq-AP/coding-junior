@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice AI - Demo Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #5856eb;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .online { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .cached { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        #log {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Voice AI - Demo Test Page</h1>
+    <p>Use this page to test caching and offline functionality before recording your demo.</p>
+
+    <div class="test-section">
+        <h2>🌐 Connection Status</h2>
+        <div id="connectionStatus" class="status">Checking...</div>
+        <button class="test-button" onclick="toggleOffline()">Toggle Offline Mode</button>
+        <button class="test-button" onclick="checkConnection()">Check Connection</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📦 Cache Management</h2>
+        <div id="cacheStatus" class="status">Loading...</div>
+        <button class="test-button" onclick="checkCache()">Check Cache Size</button>
+        <button class="test-button" onclick="clearCache()">Clear Cache</button>
+        <button class="test-button" onclick="addTestCache()">Add Test Cache</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Quick Tests</h2>
+        <p>Test these phrases in your main app:</p>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <strong>For Caching Demo:</strong><br>
+            1. "Hello, how are you today?" (repeat twice to see cache)<br>
+            2. "What can you help me with?"<br>
+            3. "Tell me a joke"<br><br>
+            
+            <strong>For Offline Demo:</strong><br>
+            1. "Hello" or "Hi" (offline response)<br>
+            2. "Help" or "What can you do" (offline response)<br>
+            3. "What's the weather?" (no cache, generic offline)<br>
+            4. Repeat any cached question (should still work offline)
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Log</h2>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let isOfflineMode = false;
+
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#3b82f6';
+            logEl.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connectionStatus');
+            const isOnline = navigator.onLine && !isOfflineMode;
+            
+            statusEl.className = `status ${isOnline ? 'online' : 'offline'}`;
+            statusEl.textContent = isOnline ? '🟢 Online - Full functionality' : '🔴 Offline - Limited functionality';
+            
+            log(`Connection status: ${isOnline ? 'Online' : 'Offline'}`, isOnline ? 'success' : 'error');
+        }
+
+        function toggleOffline() {
+            isOfflineMode = !isOfflineMode;
+            updateConnectionStatus();
+            log(`Offline mode ${isOfflineMode ? 'enabled' : 'disabled'}`, 'info');
+        }
+
+        function checkConnection() {
+            updateConnectionStatus();
+            fetch('/api/chat', { method: 'HEAD' })
+                .then(() => log('API endpoint reachable', 'success'))
+                .catch(() => log('API endpoint not reachable', 'error'));
+        }
+
+        function checkCache() {
+            const responses = localStorage.getItem('voiceai-responses');
+            const messages = localStorage.getItem('voiceai-messages');
+            const responsesSize = responses ? responses.length : 0;
+            const messagesSize = messages ? messages.length : 0;
+            const totalSize = Math.round((responsesSize + messagesSize) / 1024);
+            
+            const statusEl = document.getElementById('cacheStatus');
+            statusEl.className = 'status cached';
+            statusEl.textContent = `📦 Cache: ${totalSize}KB (${responsesSize + messagesSize} bytes)`;
+            
+            log(`Cache checked: ${totalSize}KB total`, 'info');
+            
+            if (responses) {
+                const parsedResponses = JSON.parse(responses);
+                log(`- ${parsedResponses.length} cached responses`, 'info');
+            }
+            
+            if (messages) {
+                const parsedMessages = JSON.parse(messages);
+                log(`- ${parsedMessages.length} cached messages`, 'info');
+            }
+        }
+
+        function clearCache() {
+            localStorage.removeItem('voiceai-responses');
+            localStorage.removeItem('voiceai-messages');
+            checkCache();
+            log('Cache cleared', 'success');
+        }
+
+        function addTestCache() {
+            const testResponses = [
+                { messageHash: '12345', response: 'Test cached response 1', timestamp: Date.now() },
+                { messageHash: '67890', response: 'Test cached response 2', timestamp: Date.now() }
+            ];
+            localStorage.setItem('voiceai-responses', JSON.stringify(testResponses));
+            checkCache();
+            log('Test cache data added', 'success');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Initialize
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        
+        updateConnectionStatus();
+        checkCache();
+        log('Demo test page loaded', 'success');
+        log('Open your main Voice AI app in another tab to test functionality', 'info');
+    </script>
+</body>
+</html>
