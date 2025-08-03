@@ -49,7 +49,7 @@ function hashMessage(message: string): string {
     let hash = 0;
     for (let i = 0; i < message.length; i++) {
         const char = message.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
+        hash = (hash << 5) - hash + char;
         hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString();
@@ -59,35 +59,43 @@ function hashMessage(message: string): string {
 const OFFLINE_RESPONSES = [
     {
         keywords: ["hello", "hi", "hey", "greeting"],
-        response: "Hello! I'm currently in offline mode, but I can still chat with you using cached responses. How can I help you today?"
+        response:
+            "Hello! I'm currently in offline mode, but I can still chat with you using cached responses. How can I help you today?",
     },
     {
         keywords: ["help", "what can you do", "capabilities"],
-        response: "I'm an AI assistant running in offline mode. I have limited functionality right now, but I can provide cached responses to common questions. When you're back online, I'll have full access to my knowledge base."
+        response:
+            "I'm an AI assistant running in offline mode. I have limited functionality right now, but I can provide cached responses to common questions. When you're back online, I'll have full access to my knowledge base.",
     },
     {
         keywords: ["weather", "temperature", "forecast"],
-        response: "I'm sorry, I can't check the current weather while offline. Please connect to the internet for real-time weather information."
+        response:
+            "I'm sorry, I can't check the current weather while offline. Please connect to the internet for real-time weather information.",
     },
     {
         keywords: ["time", "date", "today"],
-        response: `The current time is ${new Date().toLocaleTimeString()} and today is ${new Date().toLocaleDateString()}.`
+        response: `The current time is ${new Date().toLocaleTimeString()} and today is ${new Date().toLocaleDateString()}.`,
     },
     {
         keywords: ["offline", "connection", "internet"],
-        response: "Yes, you're currently offline. I'm using cached responses and local processing. Some features may be limited until you reconnect to the internet."
-    }
+        response:
+            "Yes, you're currently offline. I'm using cached responses and local processing. Some features may be limited until you reconnect to the internet.",
+    },
 ];
 
 function findOfflineResponse(message: string): string {
     const lowercaseMessage = message.toLowerCase();
-    
+
     for (const response of OFFLINE_RESPONSES) {
-        if (response.keywords.some(keyword => lowercaseMessage.includes(keyword))) {
+        if (
+            response.keywords.some((keyword) =>
+                lowercaseMessage.includes(keyword)
+            )
+        ) {
             return response.response;
         }
     }
-    
+
     return "I'm currently offline and don't have a cached response for that question. Please try again when you're connected to the internet.";
 }
 
@@ -103,8 +111,8 @@ export function useChat(): UseChatResult {
 
     const updateCacheStatus = useCallback(() => {
         try {
-            const responses = localStorage.getItem('voiceai-responses');
-            const messages = localStorage.getItem('voiceai-messages');
+            const responses = localStorage.getItem("voiceai-responses");
+            const messages = localStorage.getItem("voiceai-messages");
             const size = (responses?.length || 0) + (messages?.length || 0);
             setCacheStatus({ size: Math.round(size / 1024), enabled: true });
         } catch {
@@ -114,26 +122,32 @@ export function useChat(): UseChatResult {
 
     const loadCachedMessages = useCallback(() => {
         try {
-            const cached = localStorage.getItem('voiceai-messages');
+            const cached = localStorage.getItem("voiceai-messages");
             if (cached) {
                 const parsedMessages = JSON.parse(cached);
                 setMessages(parsedMessages);
             }
         } catch {
-            console.error('Failed to load cached messages');
+            console.error("Failed to load cached messages");
         }
     }, []);
 
-    const saveMessagesToCache = useCallback((newMessages: ChatMessage[]) => {
-        try {
-            // Only save last 50 messages to avoid storage bloat
-            const messagesToCache = newMessages.slice(-50);
-            localStorage.setItem('voiceai-messages', JSON.stringify(messagesToCache));
-            updateCacheStatus();
-        } catch {
-            console.error('Failed to save messages to cache');
-        }
-    }, [updateCacheStatus]);
+    const saveMessagesToCache = useCallback(
+        (newMessages: ChatMessage[]) => {
+            try {
+                // Only save last 50 messages to avoid storage bloat
+                const messagesToCache = newMessages.slice(-50);
+                localStorage.setItem(
+                    "voiceai-messages",
+                    JSON.stringify(messagesToCache)
+                );
+                updateCacheStatus();
+            } catch {
+                console.error("Failed to save messages to cache");
+            }
+        },
+        [updateCacheStatus]
+    );
 
     // Initialize cache and online status
     useEffect(() => {
@@ -145,76 +159,89 @@ export function useChat(): UseChatResult {
             setIsOnline(true);
             console.log("🟢 Back online! Full functionality restored.");
         };
-        
+
         const handleOffline = () => {
             setIsOnline(false);
             console.log("🔴 Offline mode activated. Using cached responses.");
         };
 
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("offline", handleOffline);
 
         // Load cached messages from localStorage
         loadCachedMessages();
         updateCacheStatus();
 
         return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
         };
     }, [loadCachedMessages, updateCacheStatus]);
 
     const getCachedResponse = useCallback((message: string): string | null => {
         try {
-            const cached = localStorage.getItem('voiceai-responses');
+            const cached = localStorage.getItem("voiceai-responses");
             if (!cached) return null;
 
             const cachedResponses: CachedResponse[] = JSON.parse(cached);
             const messageHash = hashMessage(message.trim().toLowerCase());
-            
-            const found = cachedResponses.find(item => item.messageHash === messageHash);
+
+            const found = cachedResponses.find(
+                (item) => item.messageHash === messageHash
+            );
             if (found) {
                 // Check if cached response is not too old (24 hours)
-                const isExpired = Date.now() - found.timestamp > 24 * 60 * 60 * 1000;
+                const isExpired =
+                    Date.now() - found.timestamp > 24 * 60 * 60 * 1000;
                 if (!isExpired) {
                     return found.response;
                 }
             }
         } catch (error) {
-            console.error('Failed to get cached response:', error);
+            console.error("Failed to get cached response:", error);
         }
         return null;
     }, []);
 
-    const saveCachedResponse = useCallback((message: string, response: string) => {
-        try {
-            const cached = localStorage.getItem('voiceai-responses');
-            let cachedResponses: CachedResponse[] = cached ? JSON.parse(cached) : [];
-            
-            const messageHash = hashMessage(message.trim().toLowerCase());
-            const newCache: CachedResponse = {
-                response,
-                timestamp: Date.now(),
-                messageHash
-            };
+    const saveCachedResponse = useCallback(
+        (message: string, response: string) => {
+            try {
+                const cached = localStorage.getItem("voiceai-responses");
+                let cachedResponses: CachedResponse[] = cached
+                    ? JSON.parse(cached)
+                    : [];
 
-            // Remove existing cache for same message
-            cachedResponses = cachedResponses.filter(item => item.messageHash !== messageHash);
-            
-            // Add new cache
-            cachedResponses.push(newCache);
-            
-            // Keep only last 100 cached responses
-            if (cachedResponses.length > 100) {
-                cachedResponses = cachedResponses.slice(-100);
+                const messageHash = hashMessage(message.trim().toLowerCase());
+                const newCache: CachedResponse = {
+                    response,
+                    timestamp: Date.now(),
+                    messageHash,
+                };
+
+                // Remove existing cache for same message
+                cachedResponses = cachedResponses.filter(
+                    (item) => item.messageHash !== messageHash
+                );
+
+                // Add new cache
+                cachedResponses.push(newCache);
+
+                // Keep only last 100 cached responses
+                if (cachedResponses.length > 100) {
+                    cachedResponses = cachedResponses.slice(-100);
+                }
+
+                localStorage.setItem(
+                    "voiceai-responses",
+                    JSON.stringify(cachedResponses)
+                );
+                updateCacheStatus();
+            } catch (error) {
+                console.error("Failed to save cached response:", error);
             }
-            
-            localStorage.setItem('voiceai-responses', JSON.stringify(cachedResponses));
-            updateCacheStatus();
-        } catch (error) {
-            console.error('Failed to save cached response:', error);
-        }
-    }, [updateCacheStatus]);
+        },
+        [updateCacheStatus]
+    );
 
     const makeRequest = useCallback(
         async (message: string, isRetry = false): Promise<string | null> => {
@@ -235,7 +262,7 @@ export function useChat(): UseChatResult {
                         role: "assistant",
                         content: cachedResponse,
                         timestamp: Date.now(),
-                        cached: true
+                        cached: true,
                     };
                     setMessages((prev) => {
                         const newMessages = [...prev, aiMessage];
@@ -256,7 +283,7 @@ export function useChat(): UseChatResult {
                         role: "assistant",
                         content: offlineResponse,
                         timestamp: Date.now(),
-                        offline: true
+                        offline: true,
                     };
                     setMessages((prev) => {
                         const newMessages = [...prev, aiMessage];
@@ -275,48 +302,23 @@ export function useChat(): UseChatResult {
                     content: msg.content,
                 }));
 
-                let response: Response;
-                try {
-                    response = await fetch("/api/chat", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            message: message.trim(),
-                            conversationHistory,
-                        }),
-                    });
-                } catch (fetchError) {
-                    // Network failure - treat as offline
-                    console.log("Network fetch failed:", fetchError);
-                    throw new Error(
-                        JSON.stringify({
-                            message: "Network connection failed",
-                            errorType: "offline",
-                            retryable: true,
-                            retryAfter: 2,
-                        })
-                    );
-                }
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        message: message.trim(),
+                        conversationHistory,
+                    }),
+                });
 
                 if (!response.ok) {
-                    let errorData: ErrorResponse;
-                    try {
-                        errorData = await response.json();
-                    } catch {
-                        // Handle non-JSON error responses
-                        const errorText = await response.text();
-                        errorData = {
-                            error: errorText || "Failed to get AI response",
-                            errorType: response.status === 503 ? "offline" : "unknown_error",
-                            retryable: response.status === 503
-                        };
-                    }
-                    
+                    const errorData: ErrorResponse = await response.json();
                     throw new Error(
                         JSON.stringify({
-                            message: errorData.error || "Failed to get AI response",
+                            message:
+                                errorData.error || "Failed to get AI response",
                             errorType: errorData.errorType || "unknown_error",
                             retryable: errorData.retryable || false,
                             retryAfter: errorData.retryAfter || 0,
@@ -324,16 +326,7 @@ export function useChat(): UseChatResult {
                     );
                 }
 
-                let data: ChatResponse;
-                try {
-                    data = await response.json();
-                } catch {
-                    // Handle non-JSON success responses
-                    const responseText = await response.text();
-                    data = {
-                        response: responseText || "Received response but couldn't parse it",
-                    };
-                }
+                const data: ChatResponse = await response.json();
 
                 // Cache the response for future use
                 saveCachedResponse(message, data.response);
@@ -394,7 +387,13 @@ export function useChat(): UseChatResult {
                 setIsRetrying(false);
             }
         },
-        [messages, getCachedResponse, saveCachedResponse, saveMessagesToCache, isOnline]
+        [
+            messages,
+            getCachedResponse,
+            saveCachedResponse,
+            saveMessagesToCache,
+            isOnline,
+        ]
     );
 
     const sendMessage = useCallback(
@@ -430,13 +429,13 @@ export function useChat(): UseChatResult {
         setError(null);
         setErrorType(null);
         setLastMessage(null);
-        localStorage.removeItem('voiceai-messages');
+        localStorage.removeItem("voiceai-messages");
         updateCacheStatus();
     }, [updateCacheStatus]);
 
     const clearCache = useCallback(() => {
-        localStorage.removeItem('voiceai-responses');
-        localStorage.removeItem('voiceai-messages');
+        localStorage.removeItem("voiceai-responses");
+        localStorage.removeItem("voiceai-messages");
         setMessages([]);
         updateCacheStatus();
     }, [updateCacheStatus]);

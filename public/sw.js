@@ -4,13 +4,10 @@ const STATIC_CACHE_URLS = [
     "/manifest.json",
     "/icon-192x192.png",
     "/icon-512x512.png",
-    "/whisper-worker.js", 
+    "/whisper-worker.js",
 ];
 
-const ASSETS_TO_CACHE = [
-    "/models/whisper.wasm",
-    "/models/tts-model.bin",
-];
+const ASSETS_TO_CACHE = ["/models/whisper.wasm", "/models/tts-model.bin"];
 
 self.addEventListener("install", (event) => {
     console.log("[SW] Install event");
@@ -66,12 +63,14 @@ self.addEventListener("fetch", (event) => {
     ) {
         event.respondWith(
             fetch(request)
-                .then(response => {
+                .then((response) => {
                     console.log("[SW] ✅ OpenAI API request successful");
                     return response;
                 })
                 .catch(() => {
-                    console.log("[SW] 🔴 OpenAI API request failed - serving offline response");
+                    console.log(
+                        "[SW] 🔴 OpenAI API request failed - serving offline response"
+                    );
                     return new Response(
                         JSON.stringify({
                             error: "Offline - OpenAI API unavailable",
@@ -118,39 +117,26 @@ self.addEventListener("fetch", (event) => {
                     const responseToCache = response.clone();
 
                     caches.open(CACHE_NAME).then((cache) => {
-                        console.log("[SW] 💾 Caching new resource:", request.url);
+                        console.log(
+                            "[SW] 💾 Caching new resource:",
+                            request.url
+                        );
                         cache.put(request, responseToCache);
                     });
 
                     return response;
                 })
                 .catch(() => {
-                    console.log("[SW] 🔌 Network failed, checking cache for:", request.url);
+                    console.log(
+                        "[SW] 🔌 Network failed, checking cache for:",
+                        request.url
+                    );
                     // For document requests, try to serve the main page from cache
                     if (request.destination === "document") {
                         return caches.match("/");
                     }
-                    // For API requests, return a proper JSON response
-                    if (request.url.includes('/api/')) {
-                        return new Response(
-                            JSON.stringify({
-                                error: "Network unavailable",
-                                errorType: "offline",
-                                message: "This request failed due to network issues. Please check your connection."
-                            }),
-                            {
-                                status: 503,
-                                statusText: "Service Unavailable",
-                                headers: { "Content-Type": "application/json" }
-                            }
-                        );
-                    }
                     // For other requests, return a generic offline response
-                    return new Response("Offline", { 
-                        status: 503,
-                        statusText: "Service Unavailable",
-                        headers: { "Content-Type": "text/plain" }
-                    });
+                    return new Response("Offline", { status: 503 });
                 });
         })
     );

@@ -28,6 +28,7 @@ export default function VoiceChatInterface() {
         isSupported: sttSupported,
         isListening,
         transcript,
+        error: speechError,
         startListening,
         stopListening,
     } = useSpeechRecognition();
@@ -79,15 +80,45 @@ export default function VoiceChatInterface() {
             stopListening();
             setIsActive(false);
         } else {
+            // Clear previous state
             lastProcessedTranscript.current = "";
-            startListening();
-            setIsActive(true);
+
+            // Check for microphone permissions
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices
+                    .getUserMedia({ audio: true })
+                    .then(() => {
+                        startListening();
+                        setIsActive(true);
+                    })
+                    .catch((error) => {
+                        console.error("Microphone permission denied:", error);
+                        // Try to start anyway in case it's already granted
+                        startListening();
+                        setIsActive(true);
+                    });
+            } else {
+                // Fallback for older browsers
+                startListening();
+                setIsActive(true);
+            }
         }
     };
 
     const toggleMessages = () => {
         setShowMessages(!showMessages);
     };
+
+    // Clear speech errors after 5 seconds
+    useEffect(() => {
+        if (speechError) {
+            const timer = setTimeout(() => {
+                // This will only clear display, the hook manages its own error state
+                console.log("Speech error timeout reached");
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [speechError]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -241,6 +272,34 @@ export default function VoiceChatInterface() {
                         </div>
                     )}
 
+                    {speechError && (
+                        <div className="bg-orange-500/20 backdrop-blur-md rounded-2xl p-4 max-w-lg mx-auto border border-orange-500/30">
+                            <div className="flex items-start space-x-3">
+                                <div className="text-2xl">🎤</div>
+                                <div className="flex-1">
+                                    <p className="text-orange-300 text-sm font-medium mb-1">
+                                        Speech Recognition Issue
+                                    </p>
+                                    <p className="text-orange-200 text-sm">
+                                        {speechError}
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setIsActive(false);
+                                            setTimeout(() => {
+                                                startListening();
+                                                setIsActive(true);
+                                            }, 500);
+                                        }}
+                                        className="mt-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1 rounded-lg text-sm transition-colors"
+                                    >
+                                        Try Again
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {error && (
                         <div
                             className={`backdrop-blur-md rounded-2xl p-4 max-w-lg mx-auto border ${
@@ -329,7 +388,9 @@ export default function VoiceChatInterface() {
                                 >
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="text-xs uppercase tracking-wide opacity-70">
-                                            {message.role === "user" ? "You" : "AI"}
+                                            {message.role === "user"
+                                                ? "You"
+                                                : "AI"}
                                         </div>
                                         <div className="flex space-x-1">
                                             {message.cached && (
@@ -372,13 +433,19 @@ export default function VoiceChatInterface() {
                 {/* Status and Cache Indicator */}
                 <div className="fixed bottom-4 left-4 flex flex-col space-y-2">
                     {/* Online/Offline Status */}
-                    <div className={`flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border text-sm ${
-                        isOnline 
-                            ? 'bg-green-500/20 border-green-500/30 text-green-300' 
-                            : 'bg-red-500/20 border-red-500/30 text-red-300'
-                    }`}>
-                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
-                        <span>{isOnline ? 'Online' : 'Offline'}</span>
+                    <div
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border text-sm ${
+                            isOnline
+                                ? "bg-green-500/20 border-green-500/30 text-green-300"
+                                : "bg-red-500/20 border-red-500/30 text-red-300"
+                        }`}
+                    >
+                        <div
+                            className={`w-2 h-2 rounded-full ${
+                                isOnline ? "bg-green-400" : "bg-red-400"
+                            } animate-pulse`}
+                        ></div>
+                        <span>{isOnline ? "Online" : "Offline"}</span>
                     </div>
 
                     {/* Cache Status */}
@@ -386,6 +453,30 @@ export default function VoiceChatInterface() {
                         <div className="flex items-center space-x-2 px-3 py-2 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 backdrop-blur-md text-sm">
                             <span>📦</span>
                             <span>Cache: {cacheStatus.size}KB</span>
+                        </div>
+                    )}
+
+                    {/* Microphone Status */}
+                    {sttSupported && (
+                        <div
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border text-sm ${
+                                speechError
+                                    ? "bg-red-500/20 border-red-500/30 text-red-300"
+                                    : isListening
+                                    ? "bg-green-500/20 border-green-500/30 text-green-300"
+                                    : "bg-gray-500/20 border-gray-500/30 text-gray-300"
+                            }`}
+                        >
+                            <span>
+                                {speechError ? "🚫" : isListening ? "🎤" : "🔇"}
+                            </span>
+                            <span>
+                                {speechError
+                                    ? "Mic Error"
+                                    : isListening
+                                    ? "Listening"
+                                    : "Mic Ready"}
+                            </span>
                         </div>
                     )}
                 </div>

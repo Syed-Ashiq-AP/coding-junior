@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
             max-width: 800px;
             margin: 0 auto;
         }
+
         .test-section {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -20,6 +22,7 @@
             padding: 20px;
             margin: 20px 0;
         }
+
         .test-button {
             background: #6366f1;
             color: white;
@@ -29,17 +32,32 @@
             cursor: pointer;
             margin: 5px;
         }
+
         .test-button:hover {
             background: #5856eb;
         }
+
         .status {
             padding: 10px;
             border-radius: 8px;
             margin: 10px 0;
         }
-        .online { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-        .offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .cached { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+
+        .online {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .cached {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
         #log {
             background: #1a1a1a;
             padding: 15px;
@@ -51,6 +69,7 @@
         }
     </style>
 </head>
+
 <body>
     <h1>🎤 Voice AI - Demo Test Page</h1>
     <p>Use this page to test caching and offline functionality before recording your demo.</p>
@@ -78,7 +97,7 @@
             1. "Hello, how are you today?" (repeat twice to see cache)<br>
             2. "What can you help me with?"<br>
             3. "Tell me a joke"<br><br>
-            
+
             <strong>For Offline Demo:</strong><br>
             1. "Hello" or "Hi" (offline response)<br>
             2. "Help" or "What can you do" (offline response)<br>
@@ -107,10 +126,10 @@
         function updateConnectionStatus() {
             const statusEl = document.getElementById('connectionStatus');
             const isOnline = navigator.onLine && !isOfflineMode;
-            
+
             statusEl.className = `status ${isOnline ? 'online' : 'offline'}`;
             statusEl.textContent = isOnline ? '🟢 Online - Full functionality' : '🔴 Offline - Limited functionality';
-            
+
             log(`Connection status: ${isOnline ? 'Online' : 'Offline'}`, isOnline ? 'success' : 'error');
         }
 
@@ -133,18 +152,18 @@
             const responsesSize = responses ? responses.length : 0;
             const messagesSize = messages ? messages.length : 0;
             const totalSize = Math.round((responsesSize + messagesSize) / 1024);
-            
+
             const statusEl = document.getElementById('cacheStatus');
             statusEl.className = 'status cached';
             statusEl.textContent = `📦 Cache: ${totalSize}KB (${responsesSize + messagesSize} bytes)`;
-            
+
             log(`Cache checked: ${totalSize}KB total`, 'info');
-            
+
             if (responses) {
                 const parsedResponses = JSON.parse(responses);
                 log(`- ${parsedResponses.length} cached responses`, 'info');
             }
-            
+
             if (messages) {
                 const parsedMessages = JSON.parse(messages);
                 log(`- ${parsedMessages.length} cached messages`, 'info');
@@ -175,11 +194,12 @@
         // Initialize
         window.addEventListener('online', updateConnectionStatus);
         window.addEventListener('offline', updateConnectionStatus);
-        
+
         updateConnectionStatus();
         checkCache();
         log('Demo test page loaded', 'success');
         log('Open your main Voice AI app in another tab to test functionality', 'info');
     </script>
 </body>
+
 </html>
